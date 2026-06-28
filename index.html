@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Headless Catalog</title>
+    <style>
+        /* --- DESIGN SYSTEM TOKENS (Senior CSS Pattern) --- */
+        :root {
+            --bg-main: #f8fafc;
+            --surface-card: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --color-primary: #6366f1; /* Modern Indigo accent */
+            --color-success: #10b981; /* Premium Emerald green */
+            --color-error: #ef4444;
+            --radius-md: 12px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            --transition-smooth: all 0.2s ease-in-out;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            margin: 0 0 8px 0;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        /* --- PRODUCT GRID SYSTEM --- */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        /* --- CARDS (Component Design) --- */
+        .product-card {
+            background: var(--surface-card);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            transition: var(--transition-smooth);
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--color-primary);
+        }
+
+        .badge {
+            align-self: flex-start;
+            background: #e0e7ff;
+            color: var(--color-primary);
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .product-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+        }
+
+        .product-desc {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin: 0 0 20px 0;
+            flex-grow: 1; /* Pushes the price block cleanly to the card bottom */
+        }
+
+        .product-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 16px;
+        }
+
+        .price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-success);
+        }
+
+        .stock-tag {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* --- STATE NOTIFICATIONS --- */
+        .state-message {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 48px;
+            background: var(--surface-card);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            border: 1px dashed #cbd5e1;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Production-Grade Catalog</h1>
+            <p class="subtitle">Decoupled Architecture • Live API Data Feeds</p>
+        </header>
+
+        <main class="grid" id="catalog-container">
+            <div class="state-message">Initializing API connection...</div>
+        </main>
+    </div>
+
+    <script>
+        const API_ENDPOINT = 'http://127.0.0.1:8000/api/products/';
+        const container = document.getElementById('catalog-container');
+
+        // Senior Pattern: Pure Component Renderers
+        function renderEmptyState() {
+            container.innerHTML = `
+                <div class="state-message">
+                    <h3>Your Storefront Catalog is Empty</h3>
+                    <p>Send a POST request using Postman to instantly inject rows into the database.</p>
+                </div>`;
+        }
+
+        function renderErrorState(err) {
+            container.innerHTML = `
+                <div class="state-message" style="border-color: var(--color-error); color: var(--color-error);">
+                    <h3>Backend Connection Refused</h3>
+                    <p>Verify that your Django development server is running via terminal on port 8000.</p>
+                </div>`;
+        }
+
+        function buildProductCardHTML(product) {
+            return `
+                <article class="product-card">
+                    <span class="badge">${product.category || 'General'}</span>
+                    <h3 class="product-title">${product.name}</h3>
+                    <p class="product-desc">${product.description || 'No description listed.'}</p>
+                    <div class="product-footer">
+                        <span class="price">$${parseFloat(product.price).toFixed(2)}</span>
+                        <span class="stock-tag">📦 ${product.stock} left</span>
+                    </div>
+                </article>
+            `;
+        }
+
+        // Senior Pattern: Explicit Async/Await Fetch Cycle
+        async function loadStoreCatalog() {
+            try {
+                const response = await fetch(API_ENDPOINT);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP Error Status: ${response.status}`);
+                }
+                
+                const products = await response.json();
+                
+                // Clear state message
+                container.innerHTML = '';
+
+                if (products.length === 0) {
+                    renderEmptyState();
+                    return;
+                }
+
+                // Batch compile HTML structures for performance
+                let gridHTML = '';
+                products.forEach(item => {
+                    gridHTML += buildProductCardHTML(item);
+                });
+                
+                container.innerHTML = gridHTML;
+
+            } catch (error) {
+                console.error("Critical Network Failure:", error);
+                renderErrorState(error);
+            }
+        }
+
+        // Initialize App Lifecycle
+        window.addEventListener('DOMContentLoaded', loadStoreCatalog);
+    </script>
+</body>
+</html>
